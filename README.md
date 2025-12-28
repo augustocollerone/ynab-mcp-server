@@ -2,6 +2,7 @@
 
 # ynab-mcp-server
 [![smithery badge](https://smithery.ai/badge/@calebl/ynab-mcp-server)](https://smithery.ai/server/@calebl/ynab-mcp-server)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/YNAB-MCP?referralCode=your-code)
 
 A Model Context Protocol (MCP) server built with mcp-framework. This MCP provides tools
 for interacting with your YNAB budgets setup at https://ynab.com
@@ -334,15 +335,39 @@ claude mcp list
 
 ### Cloud Deployment
 
-**Railway:**
+#### Railway (One-Click Deploy)
+
+Click the button at the top of this README or use:
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/YNAB-MCP?referralCode=your-code)
+
+After clicking, Railway will prompt you to configure these environment variables:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `YNAB_API_TOKEN` | Yes | Your YNAB Personal Access Token |
+| `YNAB_BUDGET_ID` | No | Default budget ID (can be set later) |
+| `MCP_API_KEY` | Recommended | API key for authenticating requests |
+
+Once deployed, your server will be available at `https://your-app.railway.app/mcp`.
+
+**Manual Railway deployment:**
 ```bash
 railway init
 railway up
-# Set environment variables in Railway dashboard:
-# - YNAB_API_TOKEN (required)
-# - YNAB_BUDGET_ID (optional)
-# - MCP_API_KEY (recommended for public endpoints)
+# Set environment variables in Railway dashboard
 ```
+
+#### Creating Your Own Railway Template
+
+If you fork this repo and want your own deploy button:
+
+1. Push your fork to GitHub
+2. Go to [Railway Templates](https://railway.com/workspace/templates)
+3. Click "New Template" → Add your GitHub repo
+4. Configure required variables: `YNAB_API_TOKEN`, `YNAB_BUDGET_ID`, `MCP_API_KEY`
+5. Publish the template and copy the template URL
+6. Update the deploy button in your README with your template URL
 
 **Fly.io:**
 ```bash
