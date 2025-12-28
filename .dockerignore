@@ -25,7 +25,6 @@ vitest.config.ts
 coverage
 
 # Config files not needed in production
-tsconfig.json
 .eslintrc*
 .prettierrc*
 
