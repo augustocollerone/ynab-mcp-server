@@ -1,0 +1,35 @@
+# Dependencies
+node_modules
+
+# Build output (will be rebuilt in container)
+dist
+
+# Development files
+*.md
+!README.md
+.git
+.gitignore
+.env
+.env.*
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Test files
+src/tests
+*.test.ts
+vitest.config.ts
+coverage
+
+# Config files not needed in production
+tsconfig.json
+.eslintrc*
+.prettierrc*
+
+# Docker files (prevent recursive inclusion)
+Dockerfile
+docker-compose.yml
+.dockerignore

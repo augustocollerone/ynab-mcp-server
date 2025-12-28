@@ -18,8 +18,11 @@ use with the YNAB api.
 
 ## Setup
 Specify env variables:
-* YNAB_API_TOKEN (required)
-* YNAB_BUDGET_ID (optional)
+* YNAB_API_TOKEN (required) - Your YNAB Personal Access Token
+* YNAB_BUDGET_ID (optional) - Default budget ID to use
+* MCP_TRANSPORT (optional) - Transport mode: `stdio` (default) or `http`
+* PORT (optional) - HTTP server port when using http transport (default: 3000)
+* MCP_API_KEY (optional) - API key for HTTP authentication
 
 ## Goal
 The goal of the project is to be able to interact with my YNAB budget via an AI conversation.
@@ -212,6 +215,80 @@ Add this configuration to your Claude Desktop config file:
 
 ### Other MCP Clients
 Check https://modelcontextprotocol.io/clients for other available clients.
+
+## Docker Deployment
+
+The server supports HTTP transport for running in Docker or on cloud servers.
+
+### Using Docker Compose (Recommended)
+
+1. Create a `.env` file with your credentials:
+   ```bash
+   YNAB_API_TOKEN=your_api_token_here
+   YNAB_BUDGET_ID=your_default_budget_id  # optional
+   MCP_API_KEY=your_secure_api_key        # optional, for authentication
+   ```
+
+2. Run with Docker Compose:
+   ```bash
+   docker-compose up -d
+   ```
+
+3. The server will be available at `http://localhost:3000/mcp`
+
+### Using Docker Directly
+
+```bash
+# Build the image
+docker build -t ynab-mcp-server .
+
+# Run the container
+docker run -d \
+  -p 3000:3000 \
+  -e YNAB_API_TOKEN=your_token \
+  -e MCP_API_KEY=your_api_key \
+  ynab-mcp-server
+```
+
+### HTTP Transport
+
+When running with `MCP_TRANSPORT=http`, the server exposes:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/mcp` | POST | MCP JSON-RPC requests |
+| `/mcp` | GET | SSE stream for notifications |
+| `/mcp` | DELETE | Session cleanup |
+| `/health` | GET | Health check endpoint |
+
+### Authentication
+
+If `MCP_API_KEY` is set, all `/mcp` requests require:
+```
+Authorization: Bearer your_api_key
+```
+
+### Cloud Deployment
+
+**Railway:**
+```bash
+railway init
+railway up
+# Set environment variables in Railway dashboard
+```
+
+**Fly.io:**
+```bash
+fly launch
+fly secrets set YNAB_API_TOKEN=xxx MCP_API_KEY=xxx
+fly deploy
+```
+
+### Security Considerations
+
+- Always use HTTPS in production (use a reverse proxy like Caddy or nginx)
+- Set a strong `MCP_API_KEY` for HTTP deployments
+- Never expose `YNAB_API_TOKEN` in logs or responses
 
 ## Building and Testing
 
