@@ -216,17 +216,45 @@ Add this configuration to your Claude Desktop config file:
 ### Other MCP Clients
 Check https://modelcontextprotocol.io/clients for other available clients.
 
-## Docker Deployment
+## Transport Modes
 
-The server supports HTTP transport for running in Docker or on cloud servers.
+This server supports two transport modes:
 
-### Using Docker Compose (Recommended)
+| Mode | Use Case | Environment Variable |
+|------|----------|---------------------|
+| **stdio** (default) | Local use with Claude Desktop, Claude Code, or other local MCP clients | `MCP_TRANSPORT=stdio` or unset |
+| **http** | Remote/cloud deployment, Docker containers, shared servers | `MCP_TRANSPORT=http` |
+
+### When to Use Each Mode
+
+- **stdio**: You're running the server locally on the same machine as your MCP client. This is the simplest setup and requires no network configuration.
+- **http**: You want to run the server on a remote machine, in Docker, or share it across multiple clients. Requires network access to the server.
+
+## Docker Deployment (HTTP Transport)
+
+When running in Docker, the server uses HTTP transport to accept remote connections.
+
+### Quick Start with Docker
+
+```bash
+# Build the image
+docker build -t ynab-mcp-server .
+
+# Run the container
+docker run -d --name ynab-mcp \
+  -p 3000:3000 \
+  -e YNAB_API_TOKEN=your_token_here \
+  -e YNAB_BUDGET_ID=your_budget_id \
+  ynab-mcp-server
+```
+
+### Using Docker Compose
 
 1. Create a `.env` file with your credentials:
    ```bash
    YNAB_API_TOKEN=your_api_token_here
    YNAB_BUDGET_ID=your_default_budget_id  # optional
-   MCP_API_KEY=your_secure_api_key        # optional, for authentication
+   MCP_API_KEY=your_secure_api_key        # optional, see Authentication section
    ```
 
 2. Run with Docker Compose:
@@ -236,36 +264,72 @@ The server supports HTTP transport for running in Docker or on cloud servers.
 
 3. The server will be available at `http://localhost:3000/mcp`
 
-### Using Docker Directly
+4. Verify it's running:
+   ```bash
+   curl http://localhost:3000/health
+   # Should return: {"status":"ok","transport":"http"}
+   ```
 
-```bash
-# Build the image
-docker build -t ynab-mcp-server .
-
-# Run the container
-docker run -d \
-  -p 3000:3000 \
-  -e YNAB_API_TOKEN=your_token \
-  -e MCP_API_KEY=your_api_key \
-  ynab-mcp-server
-```
-
-### HTTP Transport
+### HTTP Endpoints
 
 When running with `MCP_TRANSPORT=http`, the server exposes:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/mcp` | POST | MCP JSON-RPC requests |
-| `/mcp` | GET | SSE stream for notifications |
+| `/mcp` | POST | MCP JSON-RPC requests (tool calls, initialization) |
+| `/mcp` | GET | SSE stream for server notifications |
 | `/mcp` | DELETE | Session cleanup |
-| `/health` | GET | Health check endpoint |
+| `/health` | GET | Health check endpoint (returns `{"status":"ok","transport":"http"}`) |
 
-### Authentication
+### Authentication (Optional)
 
-If `MCP_API_KEY` is set, all `/mcp` requests require:
+API key authentication is **optional** and disabled by default.
+
+**When to enable it:**
+- When exposing the server to the internet
+- When running on a shared network
+- When you want to restrict access to authorized clients only
+
+**When you can skip it:**
+- Running locally on your machine
+- Running in a private network with trusted clients
+- Behind a VPN or firewall that already handles authentication
+
+**To enable authentication:**
+
+1. Set the `MCP_API_KEY` environment variable:
+   ```bash
+   docker run -d \
+     -e YNAB_API_TOKEN=your_token \
+     -e MCP_API_KEY=your_secure_random_key \
+     ynab-mcp-server
+   ```
+
+2. All requests to `/mcp` must include the Authorization header:
+   ```
+   Authorization: Bearer your_secure_random_key
+   ```
+
+3. Requests without a valid API key will receive a `401 Unauthorized` response.
+
+**Note:** The `/health` endpoint does not require authentication, so load balancers and health checks can still work.
+
+### Connecting Claude Code to HTTP Server
+
+After starting the Docker container, add it to Claude Code:
+
+```bash
+# Without authentication
+claude mcp add --transport http ynab-mcp-server http://localhost:3000/mcp --scope user
+
+# With authentication (if MCP_API_KEY is set)
+claude mcp add --transport http ynab-mcp-server http://localhost:3000/mcp \
+  --header "Authorization: Bearer your_secure_random_key" --scope user
 ```
-Authorization: Bearer your_api_key
+
+To verify it's connected:
+```bash
+claude mcp list
 ```
 
 ### Cloud Deployment
@@ -274,21 +338,26 @@ Authorization: Bearer your_api_key
 ```bash
 railway init
 railway up
-# Set environment variables in Railway dashboard
+# Set environment variables in Railway dashboard:
+# - YNAB_API_TOKEN (required)
+# - YNAB_BUDGET_ID (optional)
+# - MCP_API_KEY (recommended for public endpoints)
 ```
 
 **Fly.io:**
 ```bash
 fly launch
-fly secrets set YNAB_API_TOKEN=xxx MCP_API_KEY=xxx
+fly secrets set YNAB_API_TOKEN=xxx YNAB_BUDGET_ID=xxx MCP_API_KEY=xxx
 fly deploy
 ```
 
-### Security Considerations
+### Security Best Practices
 
-- Always use HTTPS in production (use a reverse proxy like Caddy or nginx)
-- Set a strong `MCP_API_KEY` for HTTP deployments
-- Never expose `YNAB_API_TOKEN` in logs or responses
+1. **Always use HTTPS in production** - Use a reverse proxy like Caddy, nginx, or your cloud provider's load balancer
+2. **Set a strong `MCP_API_KEY`** - Use a long, random string (e.g., `openssl rand -hex 32`)
+3. **Never expose `YNAB_API_TOKEN`** - This token has full access to your YNAB account
+4. **Use environment variables** - Never hardcode secrets in your code or Dockerfile
+5. **Restrict network access** - Use firewalls or private networks when possible
 
 ## Building and Testing
 
